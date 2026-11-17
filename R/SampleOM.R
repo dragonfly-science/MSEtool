@@ -991,7 +991,9 @@ SampleFleetPars <- function(Fleet, Stock=NULL, nsim=NULL, nyears=NULL,
   if (is.null(qvar))
     qvar <- array(exp(rnorm(proyears * nsim, rep(qmu, proyears), rep(qcv, proyears))), c(nsim, proyears))
 
-  FinF <- Find[, nyears]  # Effort in final historical year
+  # Effort in final historical year. cpars$FinF overrides it (SWO MSE quarterly OM: the reference effort is
+  # the annual-mean seasonal effort and cpars$qvar carries the seasonal pattern).
+  FinF <- if (!is.null(cpars$FinF)) cpars$FinF else Find[, nyears]
   Fleetout$qinc <- qinc
   Fleetout$qcv <- qcv
   Fleetout$qvar <- qvar
