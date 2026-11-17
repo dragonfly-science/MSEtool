@@ -762,7 +762,7 @@ CalcMPDynamics <- function(MPRecs, y, nyears, proyears, nsim, Biomass_P,
     expC <- TACusedE
     expC[TACusedE> availB] <- availB[TACusedE> availB] * 0.999
 
-    retA_P_real_V <- scale_retA_real(out$retA_P_real, out$V_P_real)
+    retA_P_real_V <- scale_retA_real(out$retA_P_real, out$V_P_real, y + nyears)
     Ftot <- sapply(1:nsim, calcF, expC, out$V_P_real_2, retA_P_real_V, Biomass_P, fishdist,
                    StockPars$Asize,
                    StockPars$maxage,
@@ -1081,7 +1081,7 @@ CalcMPDynamics_MF <- function(MPRecs_f, y, nyears, proyears, nsim,
     expC <- TACusedE
     expC[TACusedE > availB] <- availB[TACusedE > availB] * 0.999
     
-    retA_P_real_V <- lapply(out, function(o) scale_retA_real(o$retA_P_real, o$V_P_real))
+    retA_P_real_V <- lapply(out, function(o) scale_retA_real(o$retA_P_real, o$V_P_real, y + nyears))
     Ftot <- sapply(1:nsim, calcF_MF, expC,
                    V_P = lapply(out, getElement, "V_P_real_2"),
                    retA_P = retA_P_real_V,
@@ -1575,9 +1575,16 @@ TAC_type <- function(control) {
 }
 
 # retention-at-age on the same scale as V_P_real_2
-scale_retA_real <- function(retA_P_real, V_P_real) {
+# yr: optional year index. The callers only use the slice of the result for year y + nyears, so only that slice is
+# scaled (the other slices are returned unscaled). Scaling the whole nsim x age x year array at every step for every
+# fleet dominated the projection time when the time axis is long.
+scale_retA_real <- function(retA_P_real, V_P_real, yr = NULL) {
   n_age <- dim(V_P_real)[2]
-  retA_P_real/aperm(replicate(n_age, apply(V_P_real, c(1,3), max)), c(1,3,2))
+  if (is.null(yr))
+    return(retA_P_real/aperm(replicate(n_age, apply(V_P_real, c(1,3), max)), c(1,3,2)))
+  mx <- apply(V_P_real[, , yr, drop = FALSE], 1, max)                 # nsim
+  retA_P_real[, , yr] <- retA_P_real[, , yr, drop = FALSE]/array(rep(mx, n_age), dim(retA_P_real[, , yr, drop = FALSE]))
+  retA_P_real
 }
 
 calcF <- function(x, TACusedE, V_P, retA_P, Biomass_P, fishdist, Asize, maxage, nareas,
